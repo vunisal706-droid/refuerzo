@@ -96,7 +96,9 @@ function confirmar(msg, titulo, ok) {
 }
 
 // ─── Firebase ──────────────────────────────────────────────────────
-firebase.initializeApp({
+// App de Firebase con nombre propio: así su sesión NO pisa la del Gestor PT,
+// que vive en el mismo dominio (vunisal706-droid.github.io) y el mismo proyecto.
+const fbApp = firebase.initializeApp({
   apiKey: 'AIzaSyC7NgtJ1lUecZr5LR3jK1wURfzNIakJ1-8',
   authDomain: 'gestorpt-7946b.firebaseapp.com',
   databaseURL: 'https://gestorpt-7946b-default-rtdb.europe-west1.firebasedatabase.app',
@@ -104,8 +106,9 @@ firebase.initializeApp({
   storageBucket: 'gestorpt-7946b.firebasestorage.app',
   messagingSenderId: '415895342026',
   appId: '1:415895342026:web:c516c24d7dc27cc89d1d33'
-});
-const db = firebase.database();
+}, 'refuerzo');
+const db = fbApp.database();
+const auth = () => fbApp.auth();
 
 let PERFIL = null, CURSO_AC = cursoAcademicoDe(hoyIso()), BASE = '';
 let D = { alumnos: {}, quincenas: {}, evalObs: {}, config: {} };
@@ -176,10 +179,10 @@ async function entrar() {
   if (esperado && esperado !== idea) return accError('Ese usuario IdEA no corresponde al perfil seleccionado.');
   const b = $('accEntrar'); b.disabled = true; b.textContent = 'Comprobando…';
   try {
-    await firebase.auth().setPersistence($('accRecordar').checked ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION);
+    await auth().setPersistence($('accRecordar').checked ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION);
   } catch (e) { }
   try {
-    await firebase.auth().signInWithEmailAndPassword(idea + DOMINIO, idea);
+    await auth().signInWithEmailAndPassword(idea + DOMINIO, idea);
     abrirApp(perfilSel);
   } catch (e) {
     if (e.code === 'auth/network-request-failed') return accError('Sin conexión. Inténtalo de nuevo.');
@@ -198,13 +201,13 @@ function abrirApp(p) {
 }
 $('perfilPill').onclick = async () => {
   if (!await confirmar('Se cerrará la sesión y habrá que volver a entrar con el usuario IdEA.', '¿Cambiar de perfil?', 'Cambiar')) return;
-  try { await firebase.auth().signOut(); } catch (e) { }
+  try { await auth().signOut(); } catch (e) { }
   try { localStorage.removeItem('refuerzo-perfil'); } catch (e) { }
   location.reload();
 };
 (function () {
   let hecho = false;
-  firebase.auth().onAuthStateChanged(u => {
+  auth().onAuthStateChanged(u => {
     if (hecho) return; hecho = true;
     let g = null; try { g = localStorage.getItem('refuerzo-perfil'); } catch (e) { }
     if (u && g && PERFILES[g]) abrirApp(g);
@@ -938,7 +941,7 @@ function renderInformes() {
 
 // ─── Novedades (una sola vez por dispositivo) ──────────────────────
 function novedades() {
-  const ID = '2026-10-27-estreno', K = 'novedades-refuerzo';
+  const ID = '2026-10-27-sesion', K = 'novedades-refuerzo';
   try { if (localStorage.getItem(K) === ID) return; } catch (e) { return; }
   setTimeout(() => {
     abrirModal('<h2>✨ Bienvenida al Gestor de Refuerzo</h2><ul style="padding-left:20px;line-height:1.55">'
@@ -946,7 +949,8 @@ function novedades() {
       + '<li><b>📅 Hoy:</b> las sesiones del día con su alumnado. Un toque marca que alguien falta.</li>'
       + '<li><b>🗓️ Quincenal:</b> el cuadrante de coordinación con la tutoría, con los saberes del programa a mano.</li>'
       + '<li><b>✅ Evaluación:</b> C / EP / NI con un toque.</li>'
-      + '<li><b>📄 Informes:</b> los 4 documentos en Word, y todo el trimestre en un .zip.</li></ul>'
+      + '<li><b>📄 Informes:</b> los 4 documentos en Word, y todo el trimestre en un .zip.</li>'
+      + '<li><b>🔐 Novedad:</b> la sesión de Refuerzo ya no se mezcla con la del Gestor PT. Si te pide entrar otra vez, es solo esta vez.</li></ul>'
       + '<div class="modal-pie"><button class="btn btn-p" id="novOk">¡Entendido!</button></div>');
     $('novOk').onclick = () => { try { localStorage.setItem(K, ID); } catch (e) { } cerrarModal(); };
   }, 700);
