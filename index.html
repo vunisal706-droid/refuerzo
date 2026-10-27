@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2f5fb3">
+<title>Gestor de Refuerzo</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Refuerzo">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#2f5fb3;--primary-dark:#1f3f7a;--primary-soft:#e8effc;--accent:#f08c2e;
+  --text:#1c2638;--muted:#5d6b82;--border:#d9e1ee;--card:#ffffff;
+  --ok:#1f9d55;--ok-soft:#e3f6ea;--ep:#d98a00;--ep-soft:#fff3d6;--ni:#d64545;--ni-soft:#fde6e6;
+  --lcl:#2f7de1;--mat:#e0663a;--radius:16px;--shadow:0 6px 24px rgba(31,63,122,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:'Nunito Sans',system-ui,-apple-system,sans-serif;color:var(--text);background:#eef3fb;font-size:15px;line-height:1.45}
+/* Fondo animado, siempre claro */
+body::before{content:"";position:fixed;inset:-20%;z-index:-1;
+  background:radial-gradient(40% 35% at 20% 25%,#dbe8ff 0,transparent 70%),radial-gradient(35% 30% at 80% 20%,#ffe9d6 0,transparent 70%),radial-gradient(40% 35% at 70% 80%,#e0f5ea 0,transparent 70%),radial-gradient(35% 35% at 15% 85%,#f3e6ff 0,transparent 70%),#f4f7fc;
+  animation:fondo 28s ease-in-out infinite alternate}
+@keyframes fondo{0%{transform:translate(0,0) rotate(0);filter:hue-rotate(0)}50%{transform:translate(3%,-2%) rotate(4deg);filter:hue-rotate(35deg)}100%{transform:translate(-3%,2%) rotate(-3deg);filter:hue-rotate(-30deg)}}
+@media (prefers-reduced-motion:reduce){body::before{animation:none}}
+h1,h2,h3,.disp{font-family:'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:-.01em}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:15px;color:var(--text)}
+.oculto{display:none!important}
+
+/* Cabecera */
+.header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.header-in{max-width:1200px;margin:0 auto;padding:8px 14px;display:flex;align-items:center;gap:10px}
+.header img{height:38px;width:auto}
+.header h1{font-size:1.15rem;color:var(--primary-dark);line-height:1.1;cursor:pointer}
+.header h1 small{display:block;font-family:'Nunito Sans';font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.header .esp{flex:1}
+.pill{border:1px solid var(--border);background:#fff;border-radius:999px;padding:6px 12px;font-weight:700;font-size:.85rem;color:var(--primary-dark)}
+.status{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--muted);font-weight:700}
+.dot{width:9px;height:9px;border-radius:50%;background:#f0b429}.dot.ok{background:var(--ok)}.dot.off{background:var(--ni)}
+#offlineBar{display:none;background:#fff4d6;color:#7a4b00;text-align:center;font-size:.85rem;padding:8px 14px;border-bottom:1px solid #f3d27a}
+
+/* Pestañas */
+.nav{max-width:1200px;margin:0 auto;padding:10px 14px 0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav button{flex:0 0 auto;border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px 14px;font-weight:800;color:var(--muted);font-size:.92rem;min-height:44px}
+.nav button.on{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 4px 14px rgba(47,95,179,.3)}
+.nav button.inf{background:linear-gradient(135deg,#f6a23b,#e0761f);color:#fff;border-color:transparent}
+.nav button.inf.on{box-shadow:0 4px 14px rgba(224,118,31,.35)}
+.wrap{max-width:1200px;margin:0 auto;padding:14px}
+
+/* Tarjetas y controles */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.card-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.card-h h2{font-size:1.2rem;color:var(--primary-dark)}
+.kicker{font-size:.72rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--accent)}
+.btn{border:1px solid transparent;border-radius:11px;padding:9px 14px;font-weight:800;font-size:.9rem;min-height:42px;display:inline-flex;align-items:center;gap:6px;justify-content:center;transition:transform .08s}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--primary);color:#fff}.btn-p:hover{background:var(--primary-dark)}
+.btn-s{background:#fff;border-color:var(--border);color:var(--primary-dark)}.btn-s:hover{background:var(--primary-soft)}
+.btn-w{background:#fff3e6;color:#9a4a00;border-color:#f6d1a8}
+.btn-d{background:#fff;border-color:#f3c0c0;color:var(--ni)}
+.btn-sm{min-height:34px;padding:5px 10px;font-size:.82rem;border-radius:9px}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+label.f{display:block;font-size:.8rem;font-weight:800;color:var(--muted);margin:10px 0 4px}
+.in,select.in,textarea.in{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 11px;background:#fff;min-height:42px}
+.in:focus{outline:none;border-color:var(--primary)}
+textarea.in{min-height:70px;resize:vertical;line-height:1.4}
+.muted{color:var(--muted);font-size:.85rem}
+.vacio{text-align:center;color:var(--muted);padding:26px 10px;background:#f7f9fd;border-radius:14px;border:1px dashed var(--border)}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 10px;font-size:.78rem;font-weight:800;border:1px solid var(--border);background:#fff;color:var(--muted)}
+.chip.LCL{background:#e7f1ff;color:#1d5fb8;border-color:#bcd6fb}.chip.MAT{background:#ffece4;color:#b4451c;border-color:#f8c9b6}
+.tipo{font-size:.72rem;font-weight:800;padding:3px 8px;border-radius:7px;background:#eef1f7;color:#3a4a66}
+.tipo.NP{background:#fde6e6;color:#a32c2c}.tipo.NSA{background:#fff3d6;color:#8a5a00}.tipo.DA{background:#e3f6ea;color:#17703f}
+.sel-chip{border:1.5px solid var(--border);background:#fff;border-radius:999px;padding:6px 12px;font-weight:800;font-size:.85rem;color:var(--muted);min-height:36px}
+.sel-chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.sel-chip.falta{background:var(--ni-soft);border-color:#f2b8b8;color:var(--ni);text-decoration:line-through}
+
+/* Alumnos */
+.al-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.al-card{border:1px solid var(--border);border-radius:14px;background:#fff;padding:12px;text-align:left;display:flex;flex-direction:column;gap:6px;transition:transform .1s,box-shadow .1s}
+.al-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.al-sig{font-family:'Bricolage Grotesque';font-size:1.45rem;font-weight:800;color:var(--primary-dark)}
+.al-add{align-items:center;justify-content:center;border-style:dashed;color:var(--primary);font-weight:800;min-height:120px}
+.curso-h{font-size:.85rem;font-weight:800;color:var(--muted);margin:14px 0 8px;display:flex;align-items:center;gap:8px}
+.curso-h::after{content:"";flex:1;height:1px;background:var(--border)}
+
+/* Ficha */
+.subtabs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 14px}
+.subtabs button{border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 12px;font-weight:800;color:var(--muted);min-height:40px}
+.subtabs button.on{background:var(--primary-soft);color:var(--primary-dark);border-color:#b8cbef}
+.area-box{border-left:5px solid var(--lcl);background:#fbfcff;border-radius:12px;padding:12px 14px;margin-bottom:12px;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.area-box.MAT{border-left-color:var(--mat)}
+.area-box h3{font-size:1.05rem;margin-bottom:6px}
+.crit{margin:8px 0;padding:8px 10px;background:#fff;border:1px solid var(--border);border-radius:10px}
+.crit b{color:var(--primary-dark)}
+.sab{font-size:.88rem;margin:4px 0 0 14px;color:#33415c}
+.cod{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:var(--muted);font-weight:700}
+.check{display:flex;gap:9px;align-items:flex-start;padding:7px 8px;border-radius:9px;cursor:pointer}
+.check:hover{background:#f3f6fc}
+.check input{width:19px;height:19px;margin-top:2px;flex:0 0 auto;accent-color:var(--primary)}
+
+/* Hoy */
+.hoy-cab{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:12px}
+.hoy-fecha{font-size:1.35rem;color:var(--primary-dark)}
+.hoy-fecha::first-letter{text-transform:uppercase}
+.ses{border:1px solid var(--border);border-radius:14px;padding:12px 14px;background:#fff;margin-bottom:10px;border-left:5px solid var(--lcl)}
+.ses.MAT{border-left-color:var(--mat)}.ses.AMB{border-left-color:#7a5af5}
+.ses.hecha{background:#f4fbf6}
+.ses-cab{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.ses-cab .disp{font-weight:800;font-size:1.05rem}
+.ses p{font-size:.92rem;margin:3px 0}
+.aviso{background:#fff7e6;border:1px solid #ffd8a8;color:#7a3e00;border-radius:12px;padding:9px 12px;margin-bottom:12px;font-size:.9rem}
+
+/* Quincenal */
+.q-dia{border:1px solid var(--border);border-radius:14px;background:#fff;margin-bottom:10px;overflow:hidden}
+.q-dia-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;background:#f3f6fc;font-weight:800}
+.q-dia-h .fecha{font-family:'Bricolage Grotesque';color:var(--primary-dark)}
+.q-dia.nocole .q-dia-h{background:#f4f4f4;color:#888}
+.q-ses{padding:10px 12px;border-top:1px solid #eef2f8;display:grid;gap:8px;grid-template-columns:150px 1fr 1fr;align-items:start}
+.q-ses .alus{grid-column:1/-1}
+@media (max-width:760px){.q-ses{grid-template-columns:1fr}}
+.semana-h{font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;font-size:.78rem;margin:16px 0 8px}
+
+/* Evaluación */
+.ev-wrap{overflow-x:auto}
+table.ev{border-collapse:separate;border-spacing:0;width:100%;min-width:760px;font-size:.85rem}
+table.ev th{background:var(--primary);color:#fff;padding:7px 5px;font-size:.74rem;font-weight:800;border-right:1px solid rgba(255,255,255,.25)}
+table.ev th.g{font-size:.82rem}
+table.ev th.LCL{background:#2a62ad}table.ev th.MAT{background:#c4562d}
+table.ev td{border-bottom:1px solid var(--border);border-right:1px solid #eef2f8;text-align:center;padding:4px}
+table.ev td.al,table.ev tr:first-child th:first-child{position:sticky;left:0;z-index:1}
+table.ev td.al{background:#fff;text-align:left;font-weight:800;font-family:'Bricolage Grotesque';font-size:1rem;padding-left:10px;white-space:nowrap}
+.ev-btn{width:100%;min-width:44px;min-height:40px;border:1.5px dashed var(--border);border-radius:9px;background:#fff;font-weight:800;color:#aab4c6}
+.ev-btn.C{background:var(--ok-soft);border:1.5px solid #9fdcb6;color:var(--ok)}
+.ev-btn.EP{background:var(--ep-soft);border:1.5px solid #f1cf7e;color:var(--ep)}
+.ev-btn.NI{background:var(--ni-soft);border:1.5px solid #f2b8b8;color:var(--ni)}
+.leyenda{display:flex;flex-wrap:wrap;gap:12px;font-size:.82rem;margin-top:10px;color:var(--muted)}
+
+/* Informes */
+.inf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
+.inf{border:1px solid var(--border);border-radius:14px;padding:14px;background:#fff;display:flex;flex-direction:column;gap:8px}
+.inf h3{font-size:1rem;color:var(--primary-dark)}
+.inf .n{font-size:.72rem;font-weight:800;color:#fff;background:var(--primary);border-radius:6px;padding:2px 7px;align-self:flex-start}
+.inf.zip{background:linear-gradient(135deg,#fff7ec,#ffffff);border-color:#f6d1a8}
+
+/* Modal, aviso y toast */
+.modal{position:fixed;inset:0;background:rgba(20,30,50,.5);display:none;align-items:flex-start;justify-content:center;z-index:3000;padding:20px 12px;overflow-y:auto}
+.modal.show{display:flex}
+.modal-box{background:#fff;border-radius:18px;max-width:760px;width:100%;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.25);margin:auto 0}
+.modal-box h2{font-size:1.2rem;color:var(--primary-dark);margin-bottom:8px}
+.modal-pie{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap;position:sticky;bottom:-18px;background:#fff;padding:10px 0 4px}
+.opcion-grande{display:flex;gap:14px;align-items:center;text-align:left;width:100%;border:2px solid var(--border);border-radius:16px;background:#fff;padding:16px;margin-bottom:10px}
+.opcion-grande:hover{border-color:var(--primary);background:var(--primary-soft)}
+.opcion-grande .e{font-size:2rem}
+.opcion-grande b{font-size:1.05rem;color:var(--primary-dark)}
+.drop{border:2px dashed #b8cbef;border-radius:16px;padding:26px;text-align:center;background:#f6f9ff;color:var(--primary-dark);font-weight:800}
+.drop.on{background:var(--primary-soft);border-color:var(--primary)}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);opacity:0;background:#1c2638;color:#fff;padding:11px 18px;border-radius:12px;font-weight:700;z-index:9000;transition:all .25s;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.ok{background:#17703f}#toast.err{background:#a32c2c}
+
+/* Acceso */
+.acceso{position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(238,243,251,.6)}
+.acceso-box{background:#fff;border-radius:22px;max-width:390px;width:100%;padding:24px 22px;box-shadow:0 20px 60px rgba(31,63,122,.18);text-align:center}
+.acceso-box img{height:96px;margin-bottom:6px}
+.acceso-box h2{color:var(--primary-dark);font-size:1.3rem}
+.perfil-btn{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;margin-bottom:8px;border:2px solid var(--border);border-radius:14px;background:#fff;text-align:left}
+.perfil-btn.on{border-color:var(--primary);background:var(--primary-soft)}
+.perfil-btn .e{font-size:1.6rem}
+.perfil-btn b{display:block;color:var(--text)}
+.perfil-btn small{color:var(--muted)}
+#accError{display:none;margin-top:10px;padding:10px;border-radius:10px;background:var(--ni-soft);color:#a32c2c;font-size:.88rem;text-align:left}
+@media (max-width:560px){.header h1 small{display:none}.header img{height:32px}.status span{display:none}}
+</style>
+</head>
+<body>
+
+<!-- ACCESO -->
+<div class="acceso" id="pantallaAcceso">
+  <div class="acceso-box">
+    <img src="img/colegio.png" alt="CEIP Capitulaciones">
+    <h2>Gestor de Refuerzo</h2>
+    <p class="muted" style="margin-bottom:14px">Selecciona quién eres e introduce tu usuario IdEA de Séneca.</p>
+    <div id="listaPerfiles"></div>
+    <label class="f" for="accIdea" style="text-align:left">Usuario IdEA</label>
+    <input class="in" type="password" id="accIdea" placeholder="Tu usuario de Séneca" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="muted" style="text-align:left;font-size:.78rem;margin-top:5px">Es tu <b>usuario</b> de Séneca, no la contraseña.</div>
+    <button class="btn btn-p" id="accEntrar" style="width:100%;margin-top:14px">Entrar</button>
+    <label class="row muted" style="margin-top:10px;font-size:.85rem;cursor:pointer"><input type="checkbox" id="accRecordar" checked style="width:17px;height:17px"> Mantener la sesión en este dispositivo</label>
+    <div id="accError"></div>
+  </div>
+</div>
+
+<header class="header">
+  <div class="header-in">
+    <img src="img/colegio.png" alt="CEIP Capitulaciones">
+    <h1 id="tituloApp">Gestor de Refuerzo<small>CEIP Capitulaciones · Santa Fe</small></h1>
+    <div class="esp"></div>
+    <select class="pill" id="selCurso" title="Curso académico"></select>
+    <button class="pill" id="perfilPill" title="Cambiar de perfil"></button>
+    <div class="status"><div class="dot" id="dot"></div><span id="statusTxt">Conectando…</span></div>
+  </div>
+</header>
+<div id="offlineBar">📴 <b>Sin conexión.</b> Ves los últimos datos guardados en este dispositivo. Los cambios se enviarán al volver la red: no cierres la app hasta entonces.</div>
+
+<nav class="nav" id="nav">
+  <button data-s="alumnos" class="on">👥 Alumnado</button>
+  <button data-s="hoy">📅 Hoy</button>
+  <button data-s="quincenal">🗓️ Quincenal</button>
+  <button data-s="evaluacion">✅ Evaluación</button>
+  <button data-s="banco">📚 Banco</button>
+  <button data-s="informes" class="inf">📄 Informes</button>
+</nav>
+
+<main class="wrap">
+  <section id="sec-alumnos"></section>
+  <section id="sec-hoy" class="oculto"></section>
+  <section id="sec-quincenal" class="oculto"></section>
+  <section id="sec-evaluacion" class="oculto"></section>
+  <section id="sec-banco" class="oculto"></section>
+  <section id="sec-informes" class="oculto"></section>
+  <section id="sec-ficha" class="oculto"></section>
+</main>
+
+<div class="modal" id="modal"><div class="modal-box" id="modalBox"></div></div>
+<div id="toast"></div>
+
+<script src="/agenda/calendario.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="lib/jszip.min.js"></script>
+<script src="curriculo.js"></script>
+<script src="seneca.js"></script>
+<script src="documentos.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
