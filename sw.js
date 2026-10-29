@@ -1,5 +1,5 @@
 // Service Worker del Gestor de Refuerzo: la app funciona sin conexión.
-const VERSION = 'v2-b2610272230';
+const VERSION = 'v2-b2610291510';
 const SHELL = 'refuerzo-shell-' + VERSION, LIBS = 'refuerzo-libs-' + VERSION;
 const APP = ['./', './index.html', './app.js', './seneca.js', './documentos.js', './programacion.js', './curriculo.js', './manifest.json',
   './lib/jszip.min.js', './lib/docx.umd.js', './img/junta.jpg', './img/colegio.png', './icon-192.png', './icon-512.png'];
