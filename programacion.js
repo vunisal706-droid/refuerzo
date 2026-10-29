@@ -311,27 +311,50 @@ function renderHoy() {
   box.querySelectorAll('[data-hor]').forEach(b => b.onclick = () => configurarSesiones(b.dataset.hor));
 }
 
-// ─── Rellenar la quincena con la programación ──────────────────────
-function rellenarQuincena(qid) {
-  const q = D.quincenas[qid]; if (!q) return;
-  if (!horarioCurso(q.curso)) { configurarSesiones(q.curso, () => rellenarQuincena(qid)); return; }
-  const upd = {}; let n = 0;
-  q.dias = q.dias || {};
-  for (let d = 0; d < 10; d++) {
-    const ds = fechaDia(q, d);
-    if (sinCole(ds) || sesionesDia(q, String(d)).length) continue;
-    const T = trimestreFecha(ds);
-    areasDelDia(q.curso, ds).forEach((ar, i) => {
-      const alus = alumnosDeCurso(q.curso).filter(a => a.areas && a.areas[ar]);
-      if (!alus.length) return;
-      const sabs = [];
-      alus.forEach(a => { const x = planAlumno(a, ar, T).porFecha[ds]; if (x && x.saber && !sabs.includes(x.saber)) sabs.push(x.saber); });
-      const sid = db.ref(BASE + '/quincenas/' + qid + '/dias/' + d).push().key;
-      const s = { area: ar, saberes: sabs.map(t => '• ' + t).join('\n'), actividades: '', alumnos: Object.fromEntries(alus.map(a => [a.id, true])), orden: i };
-      q.dias[d] = q.dias[d] || {}; q.dias[d][sid] = s;
-      upd[BASE + '/quincenas/' + qid + '/dias/' + d + '/' + sid] = s; n++;
-    });
-  }
-  if (!n) { toast('No hay días vacíos con sesión que rellenar', ''); return; }
-  actualizar(upd); toast(n + ' sesiones rellenadas con la programación ✓', 'ok'); renderTodo();
+// ─── Quincena automática a partir de la programación ──────────────
+const areasSesion = s => s.area === 'AMB' ? ['LCL', 'MAT'] : [s.area || 'LCL'];
+// Alumnado de la sesión: el marcado a mano o, si no hay, el del curso con esa área
+function alumnosSesion(q, s) {
+  const marcados = Object.keys(s.alumnos || {}).filter(id => D.alumnos[id]);
+  if (marcados.length) return marcados;
+  return alumnosDeCurso(q.curso).filter(a => areasSesion(s).some(ar => a.areas && a.areas[ar])).map(a => a.id);
 }
+function saberesAuto(q, d, s) {
+  const ds = fechaDia(q, d), T = trimestreFecha(ds), porSaber = new Map();
+  alumnosSesion(q, s).forEach(id => {
+    const a = D.alumnos[id];
+    areasSesion(s).forEach(ar => {
+      if (!a.areas || !a.areas[ar]) return;
+      const x = planAlumno(a, ar, T).porFecha[ds];
+      if (x && x.saber) { if (!porSaber.has(x.saber)) porSaber.set(x.saber, []); porSaber.get(x.saber).push(a.siglas); }
+    });
+  });
+  const varios = porSaber.size > 1;
+  return [...porSaber.entries()].map(([t, sig]) => '• ' + t + (varios ? ' (' + sig.join(', ') + ')' : '')).join('\n');
+}
+function sesionResuelta(q, d, s) {
+  const r = Object.assign({}, s);
+  r.alumnos = Object.fromEntries(alumnosSesion(q, s).map(id => [id, true]));
+  if (!(s.saberes || '').trim()) { r.saberes = saberesAuto(q, String(d), s); r._auto = true; }
+  return r;
+}
+// Crea una vez las sesiones de los días de refuerzo que estén vacíos
+function asegurarSesionesAuto(qid) {
+  const q = D.quincenas[qid]; if (!q) return;
+  const h = horarioCurso(q.curso); if (!h) return;
+  const upd = {}; q.dias = q.dias || {}; q.autoHecho = q.autoHecho || {};
+  for (let d = 0; d < 10; d++) {
+    if (q.autoHecho[d]) continue;
+    const ds = fechaDia(q, d);
+    q.autoHecho[d] = true; upd[BASE + '/quincenas/' + qid + '/autoHecho/' + d] = true;
+    if (sinCole(ds) || sesionesDia(q, String(d)).length) continue;
+    const v = h[new Date(ds + 'T12:00').getDay()];
+    if (!v) continue;
+    const sid = db.ref(BASE + '/quincenas/' + qid + '/dias/' + d).push().key;
+    const ses = { area: v, saberes: '', actividades: '', orden: 0 };
+    q.dias[d] = q.dias[d] || {}; q.dias[d][sid] = ses;
+    upd[BASE + '/quincenas/' + qid + '/dias/' + d + '/' + sid] = ses;
+  }
+  if (Object.keys(upd).length) actualizar(upd);
+}
+App.sesionResuelta = sesionResuelta;

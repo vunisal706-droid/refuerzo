@@ -126,7 +126,7 @@
       const diaCel = n => celda([p([t(DIAS[d % 5], { bold: true, size: 17 })], { alignment: X.AlignmentType.CENTER }), p([t(App.fechaCorta(ds).slice(0, 5), { size: 16 })], { alignment: X.AlignmentType.CENTER })], { fill: AZUL_CLARO, v: X.VerticalAlign.CENTER, rows: n > 1 ? n : undefined });
       if (nc) { filas.push(new X.TableRow({ height: { value: 600, rule: X.HeightRule.ATLEAST }, children: [diaCel(1), celda('No lectivo: ' + nc.nombre, { span: 4, run: { italics: true, color: '808080' }, v: X.VerticalAlign.CENTER })] })); continue; }
       if (!ses.length) { filas.push(new X.TableRow({ height: { value: 1100, rule: X.HeightRule.ATLEAST }, children: [diaCel(1), celda(''), celda(''), celda(''), celda('')] })); continue; }
-      ses.forEach((s, i) => {
+      ses.map(x => App.sesionResuelta ? App.sesionResuelta(q, d, x) : x).forEach((s, i) => {
         const alus = Object.keys(s.alumnos || {}).filter(x => App.D.alumnos[x]).map(x => { const f = (s.faltas && s.faltas[x]) || ((App.D.alumnos[x].asist || {})[ds] === 'ausencia'); if (f) hayFaltas = true; return App.D.alumnos[x].siglas + (f ? ' (F)' : ''); });
         const cells = [celda(NOMBRE_AREA[s.area] || 'Lengua', { run: { size: 17 } }), celda(s.saberes, { run: { size: 17 } }), celda([s.actividades, s.nota ? 'Nota: ' + s.nota : ''].filter(Boolean).join('\n'), { run: { size: 17 } }), celda(alus.join('\n'), { run: { size: 17, bold: true } })];
         filas.push(new X.TableRow({ height: { value: 1000, rule: X.HeightRule.ATLEAST }, children: i === 0 ? [diaCel(ses.length)].concat(cells) : cells }));
