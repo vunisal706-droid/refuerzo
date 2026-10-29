@@ -1,7 +1,7 @@
 // Service Worker del Gestor de Refuerzo: la app funciona sin conexión.
 const VERSION = 'v2-b2610272230';
 const SHELL = 'refuerzo-shell-' + VERSION, LIBS = 'refuerzo-libs-' + VERSION;
-const APP = ['./', './index.html', './app.js', './seneca.js', './documentos.js', './curriculo.js', './manifest.json',
+const APP = ['./', './index.html', './app.js', './seneca.js', './documentos.js', './programacion.js', './curriculo.js', './manifest.json',
   './lib/jszip.min.js', './lib/docx.umd.js', './img/junta.jpg', './img/colegio.png', './icon-192.png', './icon-512.png'];
 const EXT = ['https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js',

@@ -513,12 +513,12 @@ function renderFicha() {
     + '<div><div class="kicker">' + esc(a.curso || '') + (a.unidad ? ' · ' + esc(a.unidad) : '') + (a.tutor ? ' · Tutor/a: ' + esc(a.tutor) : '') + '</div>'
     + '<h2 class="disp" style="font-size:1.6rem">' + esc(a.siglas) + ' <span class="tipo ' + (t.corto || '') + '" style="vertical-align:middle">' + esc(a.tipo) + '</span></h2></div></div>'
     + '<div class="row">' + areasDe(a).map(k => '<span class="chip ' + k + '">' + AREAS[k].icon + ' ' + AREAS[k].corto + '</span>').join('') + '</div></div>'
-    + '<div class="subtabs">' + [['programa', '📄 Programa'], ['trimestral', '🗂️ Propuesta trimestral'], ['eval', '✅ Evaluación'], ['datos', '⚙️ Datos']].map(([k, n]) => '<button data-ft="' + k + '"' + (fichaTab === k ? ' class="on"' : '') + '>' + n + '</button>').join('') + '</div>'
+    + '<div class="subtabs">' + [['programa', '📄 Programa'], ['prog', '🗓️ Programación'], ['trimestral', '🗂️ Propuesta trimestral'], ['eval', '✅ Evaluación'], ['datos', '⚙️ Datos']].map(([k, n]) => '<button data-ft="' + k + '"' + (fichaTab === k ? ' class="on"' : '') + '>' + n + '</button>').join('') + '</div>'
     + '<div id="fCuerpo"></div></div>';
   $('sec-ficha').innerHTML = h;
   $('fVolver').onclick = () => irA('alumnos');
   document.querySelectorAll('[data-ft]').forEach(b => b.onclick = () => { fichaTab = b.dataset.ft; renderFicha(); });
-  ({ programa: fichaPrograma, trimestral: fichaTrimestral, eval: fichaEval, datos: fichaDatos })[fichaTab](a);
+  ({ programa: fichaPrograma, prog: fichaProgramacion, trimestral: fichaTrimestral, eval: fichaEval, datos: fichaDatos })[fichaTab](a);
 }
 
 function fichaPrograma(a) {
@@ -657,7 +657,7 @@ function renderQuincenal() {
   const q = D.quincenas[qId], alus = alumnosDeCurso(qCurso);
   const base = BASE + '/quincenas/' + qId;
   h += '<div class="card"><div class="card-h"><div><div class="kicker">' + qCurso + ' de Primaria</div><h2>Del ' + fechaCorta(q.desde) + ' al ' + fechaCorta(masDias(q.desde, 11)) + '</h2></div>'
-    + '<div class="row"><button class="btn btn-w btn-sm" id="qWord">⬇️ DOC 3 (Word)</button><button class="btn btn-d btn-sm" id="qBorrar">🗑️</button></div></div>'
+    + '<div class="row"><button class="btn btn-s btn-sm" id="qRellenar">⚡ Rellenar con la programación</button><button class="btn btn-w btn-sm" id="qWord">⬇️ DOC 3 (Word)</button><button class="btn btn-d btn-sm" id="qBorrar">🗑️</button></div></div>'
     + '<div class="grid2"><div><label class="f">Tutor/a</label><input class="in qCampo" data-r="tutor" value="' + esc(q.tutor || '') + '"></div>'
     + '<div><label class="f">Profesor/a de refuerzo</label><input class="in qCampo" data-r="profesor" value="' + esc(q.profesor || '') + '"></div></div>';
   for (let d = 0; d < 10; d++) {
@@ -718,6 +718,7 @@ function renderQuincenal() {
   box.querySelectorAll('[data-delprog]').forEach(b => b.onclick = () => { const [d, sid] = b.dataset.delprog.split('|'); elegirDelPrograma(qId, d, sid, 'saberes'); });
   box.querySelectorAll('[data-actprog]').forEach(b => b.onclick = () => { const [d, sid] = b.dataset.actprog.split('|'); elegirDelPrograma(qId, d, sid, 'actividades'); });
   $('qWord').onclick = () => Docs.descargar('doc3', { qid: qId });
+  $('qRellenar').onclick = () => rellenarQuincena(qId);
   $('qBorrar').onclick = async () => {
     if (!await confirmar('Se borrará la quincena del ' + fechaCorta(q.desde) + ' de ' + qCurso + '.', '¿Borrar quincena?', 'Borrar')) return;
     delete D.quincenas[qId]; guardar(base, null); qId = null; renderQuincenal();
@@ -788,65 +789,7 @@ function elegirDelPrograma(qid, d, sid, tipo) {
 }
 const qIdDe = q => Object.keys(D.quincenas).find(k => D.quincenas[k] === q) || (cursoKey(q.curso) + '_' + q.desde);
 
-// ─── HOY ───────────────────────────────────────────────────────────
-let hoyFecha = null;
-function renderHoy() {
-  const hoy = hoyIso();
-  let ds = hoyFecha || hoy, nota = '';
-  if (!hoyFecha && sinCole(ds)) { const nc = sinCole(ds); nota = (nc.emoji || '🏠') + ' Hoy no hay cole (' + esc(nc.nombre) + '). Te enseño el próximo día de cole.'; ds = proxLectivo(ds, 1); }
-  const nc = sinCole(ds);
-  const titulo = ds === hoy ? 'Hoy' : ds === masDias(hoy, 1) ? 'Mañana' : ds === masDias(hoy, -1) ? 'Ayer' : 'Día de cole';
-  let h = '<div class="card"><div class="hoy-cab"><div><div class="kicker">' + titulo + '</div><h2 class="hoy-fecha">' + fechaLarga(ds) + '</h2></div>'
-    + '<div class="row"><button class="btn btn-s btn-sm" data-hn="-1" aria-label="Día anterior">◀</button><button class="btn btn-s btn-sm" data-hn="0"' + (!hoyFecha ? ' disabled' : '') + '>Hoy</button><button class="btn btn-s btn-sm" data-hn="1" aria-label="Día siguiente">▶</button>'
-    + '<input type="date" class="in" id="hoyF" value="' + ds + '" style="width:auto"></div></div>';
-  if (nota) h += '<div class="aviso">' + nota + '</div>';
-  window._hoyDs = ds;
-  if (nc) {
-    h += '<div class="vacio">' + (nc.emoji || '🏠') + ' <b>No hay cole</b> · ' + esc(nc.nombre) + '</div>';
-  } else {
-    const filas = [], sinQ = [];
-    cursosConAlumnos().forEach(c => {
-      const q = quincenaDeFecha(c, ds);
-      if (!q) { sinQ.push(c); return; }
-      const d = Math.round((new Date(ds + 'T12:00') - new Date(q.desde + 'T12:00')) / 864e5), di = d >= 7 ? d - 2 : d;
-      sesionesDia(q, String(di)).forEach(s => filas.push({ q, d: String(di), s }));
-    });
-    if (!filas.length) h += '<div class="vacio">🙌 No hay sesiones programadas para este día.</div>';
-    else {
-      h += '<p class="muted" style="margin-bottom:10px"><b>' + filas.length + '</b> ' + (filas.length === 1 ? 'sesión' : 'sesiones') + '. Toca a un alumno/a para marcar que <b>falta</b>.</p>';
-      filas.forEach(({ q, d, s }) => {
-        const qid = qIdDe(q), r = qid + '|' + d + '|' + s.sid;
-        const area = s.area === 'MAT' ? 'MAT' : s.area === 'AMB' ? 'AMB' : 'LCL';
-        const ids = Object.keys(s.alumnos || {}).filter(x => D.alumnos[x]);
-        h += '<div class="ses ' + area + (s.hecha ? ' hecha' : '') + '"><div class="ses-cab"><span class="disp">' + esc(q.curso) + '</span>'
-          + (area === 'AMB' ? '<span class="chip LCL">📖 Lengua</span><span class="chip MAT">🔢 Mates</span>' : '<span class="chip ' + area + '">' + AREAS[area].icon + ' ' + AREAS[area].corto + '</span>')
-          + '<span style="flex:1"></span><button class="btn btn-sm ' + (s.hecha ? 'btn-p' : 'btn-s') + '" data-hecha="' + r + '">' + (s.hecha ? '✅ Hecha' : '☐ Marcar hecha') + '</button></div>'
-          + (s.saberes ? '<p><b>Saberes:</b> ' + esc(s.saberes).replace(/\n/g, '<br>') + '</p>' : '')
-          + (s.actividades ? '<p><b>Actividades:</b> ' + esc(s.actividades).replace(/\n/g, '<br>') + '</p>' : '')
-          + (!s.saberes && !s.actividades ? '<p class="muted">Sin contenido programado. <a href="#" data-irq="' + qid + '">Rellenar en Quincenal</a></p>' : '')
-          + '<div class="row" style="margin-top:6px">' + (ids.length ? ids.map(id => '<button class="sel-chip ' + (s.faltas && s.faltas[id] ? 'falta' : 'on') + '" data-falta="' + r + '|' + id + '">' + esc(D.alumnos[id].siglas) + '</button>').join('') : '<span class="muted">Sin alumnado asignado</span>') + '</div>'
-          + '<input class="in" style="margin-top:8px" placeholder="Anotación de la sesión (opcional)" data-nota="' + r + '" value="' + esc(s.nota || '') + '"></div>';
-      });
-    }
-    if (sinQ.length) h += '<div class="aviso" style="margin-top:12px">Sin quincena para este día: ' + sinQ.map(c => '<button class="btn btn-s btn-sm" data-nq="' + c + '">➕ ' + c + '</button>').join(' ') + '</div>';
-  }
-  h += '</div>';
-  $('sec-hoy').innerHTML = h;
-  const box = $('sec-hoy');
-  box.querySelectorAll('[data-hn]').forEach(b => b.onclick = () => { const n = +b.dataset.hn; hoyFecha = n === 0 ? null : proxLectivo(window._hoyDs, n); renderHoy(); });
-  $('hoyF').onchange = e => { if (e.target.value) { hoyFecha = e.target.value; renderHoy(); } };
-  const ses = r => { const [qid, d, sid] = r.split('|'); return { s: D.quincenas[qid].dias[d][sid], p: BASE + '/quincenas/' + qid + '/dias/' + d + '/' + sid }; };
-  box.querySelectorAll('[data-hecha]').forEach(b => b.onclick = () => { const { s, p } = ses(b.dataset.hecha); s.hecha = !s.hecha; guardar(p + '/hecha', s.hecha || null); renderHoy(); });
-  box.querySelectorAll('[data-falta]').forEach(b => b.onclick = () => {
-    const parts = b.dataset.falta.split('|'), id = parts.pop(), { s, p } = ses(parts.join('|'));
-    s.faltas = s.faltas || {}; const f = !s.faltas[id]; if (f) s.faltas[id] = true; else delete s.faltas[id];
-    b.className = 'sel-chip ' + (f ? 'falta' : 'on'); guardar(p + '/faltas/' + id, f || null);
-    toast(D.alumnos[id].siglas + (f ? ': falta ✓' : ': asiste ✓'), 'ok');
-  });
-  box.querySelectorAll('[data-nota]').forEach(x => x.onchange = () => { const { s, p } = ses(x.dataset.nota); s.nota = x.value; guardar(p + '/nota', x.value || null); });
-  box.querySelectorAll('[data-nq]').forEach(b => b.onclick = () => nuevaQuincena(b.dataset.nq, window._hoyDs));
-  box.querySelectorAll('[data-irq]').forEach(a => a.onclick = e => { e.preventDefault(); const q = D.quincenas[a.dataset.irq]; qCurso = q.curso; qId = a.dataset.irq; irA('quincenal'); });
-}
+// ─── HOY: está en programacion.js ─────────────────────────────────
 
 // ─── EVALUACIÓN (por curso) ────────────────────────────────────────
 let evCurso = null, evTrim = trimestreDe(hoyIso());
@@ -941,16 +884,14 @@ function renderInformes() {
 
 // ─── Novedades (una sola vez por dispositivo) ──────────────────────
 function novedades() {
-  const ID = '2026-10-27-sesion', K = 'novedades-refuerzo';
+  const ID = '2026-10-29-programacion', K = 'novedades-refuerzo';
   try { if (localStorage.getItem(K) === ID) return; } catch (e) { return; }
   setTimeout(() => {
-    abrirModal('<h2>✨ Bienvenida al Gestor de Refuerzo</h2><ul style="padding-left:20px;line-height:1.55">'
-      + '<li><b>👥 Alumnado:</b> sube el programa de Séneca (Word o PDF) y la app saca sola los criterios, saberes y demás apartados. Solo se guardan las siglas.</li>'
-      + '<li><b>📅 Hoy:</b> las sesiones del día con su alumnado. Un toque marca que alguien falta.</li>'
-      + '<li><b>🗓️ Quincenal:</b> el cuadrante de coordinación con la tutoría, con los saberes del programa a mano.</li>'
-      + '<li><b>✅ Evaluación:</b> C / EP / NI con un toque.</li>'
-      + '<li><b>📄 Informes:</b> los 4 documentos en Word, y todo el trimestre en un .zip.</li>'
-      + '<li><b>🔐 Novedad:</b> la sesión de Refuerzo ya no se mezcla con la del Gestor PT. Si te pide entrar otra vez, es solo esta vez.</li></ul>'
+    abrirModal('<h2>✨ Novedades del Gestor de Refuerzo</h2><ul style="padding-left:20px;line-height:1.55">'
+      + '<li><b>🗓️ Programación</b> en la ficha de cada alumno/a: <b>automática</b> (reparte todos los saberes del programa) o <b>eligiendo tú el trimestre</b> de cada saber. La app los reparte por los días lectivos.</li>'
+      + '<li><b>⚙️ Días de refuerzo:</b> la primera vez te pregunta qué días tienes refuerzo con cada curso y de qué área.</li>'
+      + '<li><b>📅 Hoy</b>, como en el Gestor PT: qué alumnado ves ese día y qué saber toca. Marca <b>asiste, ausencia o sin cole</b> y la programación se recoloca sola.</li>'
+      + '<li><b>⚡ Quincenal:</b> botón para rellenar la quincena con la programación.</li></ul>'
       + '<div class="modal-pie"><button class="btn btn-p" id="novOk">¡Entendido!</button></div>');
     $('novOk').onclick = () => { try { localStorage.setItem(K, ID); } catch (e) { } cerrarModal(); };
   }, 700);

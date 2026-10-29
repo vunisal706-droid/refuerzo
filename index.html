@@ -180,6 +180,27 @@ table.ev td.al{background:#fff;text-align:left;font-weight:800;font-family:'Bric
 .perfil-btn small{color:var(--muted)}
 #accError{display:none;margin-top:10px;padding:10px;border-radius:10px;background:var(--ni-soft);color:#a32c2c;font-size:.88rem;text-align:left}
 @media (max-width:560px){.header h1 small{display:none}.header img{height:32px}.status span{display:none}}
+
+/* Programación y Hoy */
+.prog-lista{display:grid;gap:4px}
+.prog-fila{display:grid;grid-template-columns:78px 1fr 44px;gap:8px;align-items:center;padding:6px 8px;border:1px solid #eef2f8;border-radius:10px;background:#fff;font-size:.9rem}
+.prog-fila.pasada{opacity:.7}
+.prog-fila.hoy{border-color:var(--accent);box-shadow:0 0 0 2px #fde3c7}
+.prog-fila.ausencia{background:#fff5f5}.prog-fila.sincole{background:#f5f7ff}
+.pf-fecha{font-weight:800;color:var(--primary-dark);font-size:.82rem;text-transform:capitalize}
+.pf-est{min-height:36px;border-radius:9px;border:1.5px solid #9fdcb6;background:var(--ok-soft);color:var(--ok);font-weight:800}
+.pf-est.ausencia{border-color:#f2b8b8;background:var(--ni-soft)}.pf-est.sincole{border-color:#c7d2fe;background:#eef2ff}
+.hoy-curso{margin-bottom:16px}
+.hoy-lista{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
+.hoy-al{border:1px solid var(--border);border-radius:14px;padding:12px;background:#fff;display:flex;flex-direction:column;gap:8px}
+.hoy-al.ausencia{background:#fff5f5;border-color:#fecaca}.hoy-al.sincole{background:#f5f7ff;border-color:#c7d2fe}
+.hoy-sig{font-family:'Bricolage Grotesque';font-size:1.35rem;font-weight:800;color:var(--primary-dark);background:none;border:0;padding:0;text-decoration:underline dotted;text-underline-offset:4px}
+.hoy-saber{font-size:.92rem;line-height:1.4}
+.hoy-est{gap:6px}
+.asis{flex:1;min-height:40px;border-radius:10px;border:1.5px solid var(--border);background:#fff;font-weight:800;font-size:.82rem;color:var(--muted)}
+.asis.asiste.on{background:var(--ok-soft);border-color:#9fdcb6;color:var(--ok)}
+.asis.ausencia.on{background:var(--ni-soft);border-color:#f2b8b8;color:var(--ni)}
+.asis.sincole.on{background:#eef2ff;border-color:#c7d2fe;color:#4338ca}
 </style>
 </head>
 <body>
@@ -243,5 +264,6 @@ table.ev td.al{background:#fff;text-align:left;font-weight:800;font-family:'Bric
 <script src="seneca.js"></script>
 <script src="documentos.js"></script>
 <script src="app.js"></script>
+<script src="programacion.js"></script>
 </body>
 </html>
