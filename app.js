@@ -891,14 +891,11 @@ function renderInformes() {
 
 // ─── Novedades (una sola vez por dispositivo) ──────────────────────
 function novedades() {
-  const ID = '2026-10-29-quincena-auto', K = 'novedades-refuerzo';
+  if (window._demo) return;
+  const ID = '2026-11-18-demo', K = 'novedades-refuerzo';
   try { if (localStorage.getItem(K) === ID) return; } catch (e) { return; }
   setTimeout(() => {
-    abrirModal('<h2>✨ Novedades del Gestor de Refuerzo</h2><ul style="padding-left:20px;line-height:1.55">'
-      + '<li><b>🗓️ Programación</b> en la ficha de cada alumno/a: <b>automática</b> (reparte todos los saberes del programa) o <b>eligiendo tú el trimestre</b> de cada saber. La app los reparte por los días lectivos.</li>'
-      + '<li><b>⚙️ Días de refuerzo:</b> la primera vez te pregunta qué días tienes refuerzo con cada curso y de qué área.</li>'
-      + '<li><b>📅 Hoy</b>, como en el Gestor PT: qué alumnado ves ese día y qué saber toca. Marca <b>asiste, ausencia o sin cole</b> y la programación se recoloca sola.</li>'
-      + '<li><b>⚡ Quincenal automática:</b> los días de refuerzo se rellenan solos con los saberes de la programación y el alumnado. Si escribes tú los saberes, se queda lo tuyo.</li></ul>'
+    abrirModal('<h2>✨ Novedad</h2><p style="line-height:1.55"><b>🧪 Modo demostración:</b> en la pantalla de entrada hay un botón para ver la app con alumnado inventado y una guía que explica cada apartado. Sirve para enseñarla a otros centros: no toca tus datos.</p>'
       + '<div class="modal-pie"><button class="btn btn-p" id="novOk">¡Entendido!</button></div>');
     $('novOk').onclick = () => { try { localStorage.setItem(K, ID); } catch (e) { } cerrarModal(); };
   }, 700);
