@@ -91,27 +91,36 @@
   }
 
   // ── DOC 2 · Propuesta trimestral ────────────────────────────
-  function doc2(id, T) {
+  // Un área entra en el DOC 2 si el programa la refuerza de verdad (tiene criterios o saberes)
+  // o si la maestra ya le ha marcado saberes ese trimestre.
+  function areasDoc2(a, T) {
+    const tri = ((a.trimestral || {})['t' + T]) || {};
+    return App.areasDe(a).filter(k => App.saberesDePrograma(a, k).length || App.lista((tri[k] || {}).saberes).length);
+  }
+  function doc2(id, T) { return documento(seccionesDoc2(id, T)); }
+  function seccionesDoc2(id, T) {
     const a = App.D.alumnos[id];
     const tri = ((a.trimestral || {})['t' + T]) || {};
-    return documento(App.areasDe(a).map(k => {
+    return areasDoc2(a, T).map(k => {
       const d = tri[k] || {}, ot = ((a.programa || {})[k] || {}).otros || {};
-      // Si la maestra no ha escrito nada, se copia lo que trae el programa de Séneca
-      const delProg = (...ks) => ks.flatMap(x => App.lista(ot[x])).join('\n');
+      const sabProg = App.saberesDePrograma(a, k);
+      // Si la maestra no ha escrito nada, se copia lo que trae el programa de Séneca (solo si el área está en el programa)
+      const delProg = (...ks) => sabProg.length ? ks.flatMap(x => App.lista(ot[x])).join('\n') : '';
       const val = (v, ...ks) => (String(v || '').trim() ? v : delProg(...ks));
+      const saberes = App.lista(d.saberes).length ? App.lista(d.saberes) : sabProg.map(App.textoSaber);
       const fila = (lab, val) => new X.TableRow({ height: { value: 2300, rule: X.HeightRule.ATLEAST }, children: [cab(lab, { w: 2000 }), celda(val, { w: 7700 })] });
       return seccion([
         titulo('PROPUESTA CURRICULAR TRIMESTRAL DE CADA ÁREA OBJETO DE REFUERZO'),
         p([t('Alumno/a: ', { bold: true }), t(a.siglas), t('    Curso: ', { bold: true }), t(a.curso + (a.unidad ? ' (' + a.unidad + ')' : '')), t('    Área: ', { bold: true }), t(App.AREAS[k].nombre)], { alignment: X.AlignmentType.CENTER }),
         p([t('Trimestre: ', { bold: true }), t(T + 'º'), t('    Curso académico: ', { bold: true }), t(App.nombreCursoAc(App.CURSO_AC)), t('    Programa: ', { bold: true }), t(a.tipo || '')], { alignment: X.AlignmentType.CENTER, spacing: { after: 200 } }),
         tabla([
-          fila('SABERES BÁSICOS', App.lista(d.saberes).join('\n')),
+          fila('SABERES BÁSICOS', saberes.join('\n')),
           fila('TIPOS DE ACTIVIDADES Y TAREAS', val(d.actividades, 'actividades')),
           fila('RECURSOS DIDÁCTICOS, AGRUPAMIENTOS, DISTRIBUCIÓN DE ESPACIOS Y TIEMPOS', val(d.recursos, 'recursos', 'agrupamientos')),
           fila('PROCEDIMIENTOS E INSTRUMENTOS DE EVALUACIÓN', val(d.evaluacion, 'instrumentos'))
         ], [2000, 7700])
       ]);
-    }));
+    });
   }
 
   // ── DOC 3 · Cuadrante quincenal ─────────────────────────────
@@ -182,7 +191,8 @@
   }
 
   // ── Programa del alumno ─────────────────────────────────────
-  function docPrograma(id) {
+  function docPrograma(id) { return documento(seccionesPrograma(id)); }
+  function seccionesPrograma(id) {
     const a = App.D.alumnos[id];
     const dato = (l, v) => new X.TableRow({ children: [celda(l, { w: 3000, run: { bold: true }, fill: GRIS_CLARO }), celda(v || '', { w: 6700 })] });
     const ch = [
@@ -214,7 +224,7 @@
       const filas = App.OTROS.filter(([ok]) => App.lista(ot[ok]).length).map(([ok, lab]) => new X.TableRow({ children: [celda(lab, { w: 3000, run: { bold: true, size: 18 }, fill: AZUL_CLARO }), celda(App.lista(ot[ok]).join('\n'), { w: 6700, run: { size: 18 } })] }));
       if (filas.length) { ch.push(etiqueta('Propuesta de otros aspectos a trabajar en el programa')); ch.push(tabla(filas, [3000, 6700])); }
     });
-    return documento([seccion(ch)]);
+    return [seccion(ch)];
   }
 
   // ── Descargas ───────────────────────────────────────────────
@@ -237,23 +247,28 @@
       if (tipo === 'doc4') return bajar(await blob(doc4(o.curso, o.trim)), 'DOC4_Evaluacion_T' + o.trim + '_' + (o.curso === '*' ? 'todos' : limpio(o.curso)) + '_' + cur + '.docx'), App.toast('Descargado ✓', 'ok');
       if ((tipo === 'doc2' || tipo === 'programa') && o.id !== '*') {
         const a = App.D.alumnos[o.id];
-        if (!App.areasDe(a).length) return App.toast('Ese alumno/a no tiene áreas marcadas', 'err');
+        if (!App.areasDe(a).length || (tipo === 'doc2' && !areasDoc2(a, o.trim).length)) return App.toast('Ese alumno/a no tiene áreas con programa de refuerzo', 'err');
         const b = await blob(tipo === 'doc2' ? doc2(o.id, o.trim) : docPrograma(o.id));
         bajar(b, tipo === 'doc2' ? nomDoc2(a, o.trim) : 'Programa_' + limpio(a.siglas) + '_' + limpio(a.curso) + '.docx');
         return App.toast('Descargado ✓', 'ok');
       }
-      // Varios archivos → un .zip
-      const zip = new JSZip();
+      // Todo el alumnado → un único Word, cada alumno/a y área en su página
       const als = App.alumnosOrden().filter(a => App.areasDe(a).length);
-      if (tipo === 'doc2') { for (const a of als) zip.file(nomDoc2(a, o.trim), await blob(doc2(a.id, o.trim))); return bajar(await zip.generateAsync({ type: 'blob' }), 'DOC2_Propuestas_T' + o.trim + '_' + cur + '.zip'), App.toast('Descargado ✓', 'ok'); }
-      if (tipo === 'programa') { for (const a of als) zip.file('Programa_' + limpio(a.siglas) + '_' + limpio(a.curso) + '.docx', await blob(docPrograma(a.id))); return bajar(await zip.generateAsync({ type: 'blob' }), 'Programas_refuerzo_' + cur + '.zip'), App.toast('Descargado ✓', 'ok'); }
+      const doc2Todos = T => documento(als.flatMap(a => seccionesDoc2(a.id, T)));
+      if (tipo === 'doc2') {
+        const sec = als.flatMap(a => seccionesDoc2(a.id, o.trim));
+        if (!sec.length) return App.toast('No hay áreas con programa de refuerzo', 'err');
+        return bajar(await blob(documento(sec)), 'DOC2_Propuestas_T' + o.trim + '_todo_el_alumnado_' + cur + '.docx'), App.toast('Descargado ✓', 'ok');
+      }
+      if (tipo === 'programa') return bajar(await blob(documento(als.flatMap(a => seccionesPrograma(a.id)))), 'Programas_refuerzo_todo_el_alumnado_' + cur + '.docx'), App.toast('Descargado ✓', 'ok');
+      const zip = new JSZip();
       if (tipo === 'zip') {
         const T = o.trim, meses = { 1: [9, 10, 11, 12], 2: [1, 2, 3], 3: [4, 5, 6, 7, 8] }[T];
         if (App.cursosConAlumnos().length) {
           zip.file('DOC1_Control_programas_' + cur + '.docx', await blob(doc1('*')));
           zip.file('DOC4_Evaluacion_T' + T + '_' + cur + '.docx', await blob(doc4('*', T)));
         }
-        for (const a of als) zip.file('DOC2_Propuestas_T' + T + '/' + nomDoc2(a, T), await blob(doc2(a.id, T)));
+        if (als.some(a => areasDoc2(a, T).length)) zip.file('DOC2_Propuestas_T' + T + '_todo_el_alumnado_' + cur + '.docx', await blob(doc2Todos(T)));
         for (const q of App.quincenasOrden().filter(q => meses.includes(+q.desde.slice(5, 7)))) zip.file('DOC3_Quincenas_T' + T + '/' + nomDoc3(q), await blob(doc3(q.id)));
         bajar(await zip.generateAsync({ type: 'blob' }), 'Refuerzo_T' + T + '_' + cur + '.zip');
         return App.toast('Descargado ✓', 'ok');

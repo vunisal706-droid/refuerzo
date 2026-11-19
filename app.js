@@ -339,9 +339,10 @@ function subirSeneca(idExistente) {
     $('senEstado').textContent = '⏳ Leyendo «' + f.name + '»…';
     try {
       const r = await Seneca.leerArchivo(f);
-      if (!Object.keys(r.areas).length) { $('senEstado').innerHTML = '⚠️ No he encontrado el programa en ese archivo. ¿Es el «Programa de Refuerzo del Aprendizaje» de Séneca?'; return; }
+      if (!Object.keys(r.areas).length || !Object.values(r.areas).some(x => (x.criterios || []).length || (x.competencias || []).length)) { $('senEstado').innerHTML = '⚠️ No he encontrado el programa en ese archivo. ¿Es el «Programa de Refuerzo del Aprendizaje» de Séneca?'; return; }
       const prog = {};
-      Object.entries(r.areas).forEach(([k, a]) => { prog[k] = { competencias: a.competencias, criterios: a.criterios, otros: a.otros }; });
+      // Solo cuentan las áreas que el programa refuerza de verdad (con criterios); las que Séneca lista vacías no se marcan
+      Object.entries(r.areas).forEach(([k, a]) => { if ((a.criterios || []).length || (a.competencias || []).length) prog[k] = { competencias: a.competencias, criterios: a.criterios, otros: a.otros }; });
       if (idExistente) {
         const a = D.alumnos[idExistente];
         const areas = Object.assign({}, a.areas); Object.keys(prog).forEach(k => areas[k] = true);
@@ -897,7 +898,7 @@ function renderInformes() {
     + '<div class="inf"><span class="n">DOC 3</span><h3>Cuadrante de programación quincenal</h3><p class="muted">Coordinación tutoría – refuerzo educativo.</p><select class="in" id="i3q">' + (qs.length ? qs.map(q => '<option value="' + q.id + '">' + esc(q.curso) + ' · del ' + fechaCorta(q.desde) + ' al ' + fechaCorta(masDias(q.desde, 11)) + '</option>').join('') : '<option value="">— Sin quincenas —</option>') + '</select><button class="btn btn-p" id="i3"' + (qs.length ? '' : ' disabled') + '>⬇️ Descargar</button></div>'
     + '<div class="inf"><span class="n">DOC 4</span><h3>Cuadrante de evaluación</h3><p class="muted">C / EP / NI por curso y trimestre, con observaciones.</p><select class="in" id="i4c">' + optCur + '</select><select class="in" id="i4t">' + optTri + '</select><button class="btn btn-p" id="i4">⬇️ Descargar</button></div>'
     + '<div class="inf"><span class="n">PROGRAMA</span><h3>Programa de refuerzo del alumno/a</h3><p class="muted">Resumen completo: criterios, saberes y otros aspectos.</p><select class="in" id="i5a">' + optAl + '</select><button class="btn btn-p" id="i5">⬇️ Descargar</button></div>'
-    + '<div class="inf zip"><span class="n" style="background:var(--accent)">ZIP</span><h3>Todo el trimestre en un .zip</h3><p class="muted">DOC 1, DOC 2 de cada alumno/a, las quincenas del trimestre y DOC 4 de cada curso.</p><select class="in" id="izt">' + optTri + '</select><button class="btn btn-w" id="iz">📦 Descargar .zip</button></div>'
+    + '<div class="inf zip"><span class="n" style="background:var(--accent)">ZIP</span><h3>Todo el trimestre en un .zip</h3><p class="muted">DOC 1, el DOC 2 de todo el alumnado en un solo Word, las quincenas del trimestre y DOC 4 de cada curso.</p><select class="in" id="izt">' + optTri + '</select><button class="btn btn-w" id="iz">📦 Descargar .zip</button></div>'
     + '</div></div>';
   $('sec-informes').innerHTML = h;
   $('i1').onclick = () => Docs.descargar('doc1', { curso: $('i1c').value });
@@ -912,10 +913,10 @@ function renderInformes() {
 // ─── Novedades (una sola vez por dispositivo) ──────────────────────
 function novedades() {
   if (window._demo) return;
-  const ID = '2026-11-19-borrar-doc2', K = 'novedades-refuerzo';
+  const ID = '2026-11-19-word-unico', K = 'novedades-refuerzo';
   try { if (localStorage.getItem(K) === ID) return; } catch (e) { return; }
   setTimeout(() => {
-    abrirModal('<h2>✨ Novedad</h2><p style="line-height:1.55">🗑️ Ya se puede <b>borrar alumnado</b> desde la papelera de cada tarjeta. Además, el DOC 2 copia del programa de Séneca los apartados que dejes en blanco y la quincena reparte sola las actividades de las sesiones vacías.</p>'
+    abrirModal('<h2>✨ Novedad</h2><p style="line-height:1.55">📄 Con «Todo mi alumnado» el DOC 2 y los programas salen <b>en un solo Word</b>. El DOC 2 solo rellena las áreas que están en el programa de refuerzo de cada alumno/a.</p>'
       + '<div class="modal-pie"><button class="btn btn-p" id="novOk">¡Entendido!</button></div>');
     $('novOk').onclick = () => { try { localStorage.setItem(K, ID); } catch (e) { } cerrarModal(); };
   }, 700);
