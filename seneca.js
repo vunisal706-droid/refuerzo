@@ -10,13 +10,18 @@
     [/ingl[eé]s|lengua extranjera/i, 'ING'],
     [/conocimiento del medio/i, 'CMN']
   ];
+  // En el PDF las etiquetas de la tabla a veces se parten en dos líneas
+  // («Agrupamientos, distribución de» / «espacios y tiempos»): basta con el principio.
   const OTROS = [
-    [/^formas de acceso a la informaci[oó]n/i, 'acceso'],
-    [/^tipos de actividades y tareas/i, 'actividades'],
-    [/^recursos did[aá]cticos/i, 'recursos'],
-    [/^agrupamientos, distribuci[oó]n de espacios y tiempos/i, 'agrupamientos'],
-    [/^instrumentos de evaluaci[oó]n/i, 'instrumentos']
+    [/^formas de acceso(?: a)?(?: la)?(?: informaci[oó]n)?:?/i, 'acceso'],
+    [/^tipos de actividades(?: y)?(?: tareas)?:?/i, 'actividades'],
+    [/^recursos did[aá]cticos(?:,? agrupamientos(?:, distribuci[oó]n de espacios y tiempos)?)?:?/i, 'recursos'],
+    [/^agrupamientos(?:,? distribuci[oó]n)?(?: de)?(?: espacios)?(?: y)?(?: tiempos)?:?/i, 'agrupamientos'],
+    [/^(?:procedimientos e )?instrumentos(?: de)?(?: evaluaci[oó]n)?:?/i, 'instrumentos'],
+    [/^procedimientos(?: de evaluaci[oó]n)?:?$/i, 'instrumentos']
   ];
+  // Restos de una etiqueta partida: no son contenido
+  const COLA_ETIQUETA = /^(?:a la informaci[oó]n|la informaci[oó]n|informaci[oó]n|y tareas|tareas|distribuci[oó]n de espacios y tiempos|de espacios y tiempos|espacios y tiempos|y tiempos|tiempos|de evaluaci[oó]n|evaluaci[oó]n|e instrumentos de evaluaci[oó]n):?$/i;
   const RUIDO = [
     /^ref\.?\s*doc\.?:?/i, /^detprorefapr/i, /^fecha generaci[oó]n/i, /^c[oó]d\.?\s*centro/i,
     /^\d{6,10}$/, /^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/, /^p[aá]g\.?:?\s*\d/i, /^consejer[ií]a de/i,
@@ -101,7 +106,7 @@
           const mm = rx.exec(l);
           if (mm) { otrosKey = k; l = limpia(l.slice(mm[0].length)); tocado = true; break; }
         }
-        if (!l) continue;
+        if (!l || (!tocado && COLA_ETIQUETA.test(l))) continue;
         if (otrosKey) {
           const lista = area.otros[otrosKey];
           // Las líneas que siguen sin punto final suelen ser continuación de la anterior

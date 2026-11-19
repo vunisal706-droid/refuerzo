@@ -111,6 +111,9 @@ const db = fbApp.database();
 const auth = () => fbApp.auth();
 
 let PERFIL = null, CURSO_AC = cursoAcademicoDe(hoyIso()), BASE = '';
+// María puede abrir los datos de cualquier maestra (para subir los programas de todos los cursos)
+const SUPER = ['maria'];
+let DUENO = null;   // de quién son los datos que se están viendo
 let D = { alumnos: {}, quincenas: {}, evalObs: {}, config: {} };
 let BANCO = {};
 let refBase = null, refBanco = null;
@@ -123,7 +126,7 @@ const guardar = (ruta, val) => { ultimoLocal = Date.now(); return db.ref(ruta).s
 const actualizar = obj => { ultimoLocal = Date.now(); return db.ref().update(obj).catch(errGuardar); };
 function errGuardar(e) { toast('No se pudo guardar: ' + (e && e.message ? e.message : 'sin conexión'), 'err'); }
 
-function cacheKey() { return 'refuerzo-cache-' + PERFIL + '-' + CURSO_AC; }
+function cacheKey() { return 'refuerzo-cache-' + DUENO + '-' + CURSO_AC; }
 function cachear() { try { localStorage.setItem(cacheKey(), JSON.stringify(D)); localStorage.setItem('refuerzo-banco', JSON.stringify(BANCO)); } catch (e) { } }
 function leerCache() {
   try { const c = JSON.parse(localStorage.getItem(cacheKey())); if (c) D = Object.assign({ alumnos: {}, quincenas: {}, evalObs: {}, config: {} }, c); } catch (e) { }
@@ -132,7 +135,7 @@ function leerCache() {
 
 function conectarDatos() {
   if (refBase) refBase.off();
-  BASE = 'refuerzo/' + PERFIL + '/cursos/' + CURSO_AC;
+  BASE = 'refuerzo/' + DUENO + '/cursos/' + CURSO_AC;
   D = { alumnos: {}, quincenas: {}, evalObs: {}, config: {} };
   leerCache(); renderTodo();
   refBase = db.ref(BASE);
@@ -191,13 +194,21 @@ async function entrar() {
   }
 }
 function abrirApp(p) {
-  PERFIL = p;
+  PERFIL = p; DUENO = p;
   try { localStorage.setItem('refuerzo-perfil', p); } catch (e) { }
   $('pantallaAcceso').style.display = 'none';
   $('perfilPill').textContent = PERFILES[p].emoji + ' ' + PERFILES[p].nombre.split(' ')[0];
+  pintarSelectorMaestra();
   pintarSelectorCurso();
   conectarDatos();
   novedades();
+}
+function pintarSelectorMaestra() {
+  const sel = $('selMaestra'); if (!sel) return;
+  if (!SUPER.includes(PERFIL)) { sel.hidden = true; return; }
+  sel.hidden = false;
+  sel.innerHTML = Object.entries(PERFILES).map(([k, x]) => '<option value="' + k + '"' + (k === DUENO ? ' selected' : '') + '>📂 ' + (k === PERFIL ? 'Mis datos' : 'Datos de ' + esc(x.nombre.split(' ')[0])) + '</option>').join('');
+  sel.onchange = () => { DUENO = sel.value; conectarDatos(); toast(DUENO === PERFIL ? 'Tus datos' : 'Trabajando con los datos de ' + PERFILES[DUENO].nombre.split(' ')[0], 'ok'); };
 }
 $('perfilPill').onclick = async () => {
   if (!await confirmar('Se cerrará la sesión y habrá que volver a entrar con el usuario IdEA.', '¿Cambiar de perfil?', 'Cambiar')) return;
@@ -267,7 +278,7 @@ const textoSaber = s => (s.c ? s.c + '. ' : '') + s.t;
 function tarjetaAlumno(a) {
   const t = TIPOS[a.tipo] || {};
   return '<button class="al-card" data-al="' + a.id + '"><div class="row" style="justify-content:space-between"><span class="al-sig">' + esc(a.siglas || '¿?') + '</span>'
-    + '<span class="tipo ' + (t.corto || '') + '">' + esc(a.tipo || '') + '</span></div>'
+    + '<span class="row" style="gap:6px"><span class="tipo ' + (t.corto || '') + '">' + esc(a.tipo || '') + '</span><span class="al-borrar" role="button" tabindex="0" data-borrar="' + a.id + '" title="Borrar a ' + esc(a.siglas || '') + '" aria-label="Borrar a ' + esc(a.siglas || '') + '">🗑️</span></span></div>'
     + '<div class="muted">' + esc(a.curso || '') + (a.unidad ? ' · ' + esc(a.unidad) : '') + '</div>'
     + '<div class="row">' + areasDe(a).map(k => '<span class="chip ' + k + '">' + AREAS[k].icon + ' ' + AREAS[k].corto + '</span>').join('') + '</div></button>';
 }
@@ -288,7 +299,22 @@ function renderAlumnos() {
   h += '</div>';
   $('sec-alumnos').innerHTML = h;
   $('btnNuevo').onclick = nuevoAlumno;
-  $('sec-alumnos').querySelectorAll('[data-al]').forEach(b => b.onclick = () => abrirFicha(b.dataset.al));
+  $('sec-alumnos').querySelectorAll('[data-al]').forEach(b => b.onclick = e => { if (e.target.closest('[data-borrar]')) return; abrirFicha(b.dataset.al); });
+  $('sec-alumnos').querySelectorAll('[data-borrar]').forEach(b => {
+    const ir = e => { e.preventDefault(); e.stopPropagation(); borrarAlumno(b.dataset.borrar); };
+    b.onclick = ir; b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') ir(e); };
+  });
+}
+async function borrarAlumno(id) {
+  const a = D.alumnos[id]; if (!a) return false;
+  if (!await confirmar('Se borrará ' + a.siglas + ' con su programa, propuestas y evaluaciones. No se puede deshacer.', '¿Borrar a ' + a.siglas + '?', 'Borrar')) return false;
+  const upd = { [BASE + '/alumnos/' + id]: null };
+  Object.entries(D.quincenas).forEach(([qid, q]) => Object.entries(q.dias || {}).forEach(([d, ses]) => Object.keys(ses || {}).forEach(sid => {
+    if (ses[sid].alumnos && ses[sid].alumnos[id]) upd[BASE + '/quincenas/' + qid + '/dias/' + d + '/' + sid + '/alumnos/' + id] = null;
+  })));
+  delete D.alumnos[id];
+  await actualizar(upd); toast(a.siglas + ' borrado/a', 'ok'); renderTodo();
+  return true;
 }
 
 function nuevoAlumno() {
@@ -582,7 +608,7 @@ function fichaTrimestral(a) {
 }
 function campoTri(area, k, titulo, val, delPrograma) {
   const v = delPrograma.join('\n');
-  return '<label class="f">' + esc(titulo) + '</label><textarea class="in trT" data-a="' + area + '" data-k="' + k + '" rows="3">' + esc(val || '') + '</textarea>'
+  return '<label class="f">' + esc(titulo) + '</label><textarea class="in trT" data-a="' + area + '" data-k="' + k + '" rows="3"' + (v ? ' placeholder="Si lo dejas en blanco, en el DOC 2 se copia lo del programa de Séneca."' : '') + '>' + esc(val || '') + '</textarea>'
     + (v ? '<button class="btn btn-s btn-sm trUsar" style="margin-top:4px" data-a="' + area + '" data-k="' + k + '" data-v="' + esc(v) + '">📋 Usar lo del programa</button>' : '');
 }
 
@@ -621,17 +647,9 @@ function fichaDatos(a) {
     ['Información a la familia', a.fechaFamilia ? fechaCorta(a.fechaFamilia) : '—'], ['Autorización', a.autorizacion ? '✅ Firmada' : '⏳ Pendiente'], ['Observaciones', a.observaciones || '—'],
     ['Origen del programa', { seneca: 'Séneca', banco: 'Banco', manual: 'Manual' }[a.origen] || '—']]
       .map(([k, v]) => '<div><div class="muted" style="font-weight:800">' + k + '</div><div>' + esc(v || '—') + '</div></div>').join('') + '</div>'
-    + '<div class="row" style="margin-top:16px"><button class="btn btn-p" id="fdEditar">✏️ Editar datos</button><button class="btn btn-d" id="fdBorrar">🗑️ Dar de baja</button></div>';
+    + '<div class="row" style="margin-top:16px"><button class="btn btn-p" id="fdEditar">✏️ Editar datos</button><button class="btn btn-d" id="fdBorrar">🗑️ Borrar alumno/a</button></div>';
   $('fdEditar').onclick = () => formAlumno(fichaId, a);
-  $('fdBorrar').onclick = async () => {
-    if (!await confirmar('Se borrará ' + a.siglas + ' con su programa, propuestas y evaluaciones. No se puede deshacer.', '¿Dar de baja a ' + a.siglas + '?', 'Borrar')) return;
-    const upd = { [BASE + '/alumnos/' + fichaId]: null };
-    Object.entries(D.quincenas).forEach(([qid, q]) => Object.entries(q.dias || {}).forEach(([d, ses]) => Object.keys(ses || {}).forEach(sid => {
-      if (ses[sid].alumnos && ses[sid].alumnos[fichaId]) upd[BASE + '/quincenas/' + qid + '/dias/' + d + '/' + sid + '/alumnos/' + fichaId] = null;
-    })));
-    delete D.alumnos[fichaId];
-    await actualizar(upd); toast('Alumno/a dado de baja', 'ok'); irA('alumnos');
-  };
+  $('fdBorrar').onclick = async () => { if (await borrarAlumno(fichaId)) irA('alumnos'); };
 }
 
 // ─── QUINCENAS ─────────────────────────────────────────────────────
@@ -678,7 +696,8 @@ function renderQuincenal() {
         + '<div><label class="f" style="margin-top:0">Saberes / objetivos</label><textarea class="in qS" rows="3" data-d="' + d + '" data-s="' + s.sid + '" data-k="saberes"' + (s._auto ? ' data-auto="' + esc(s.saberes) + '" style="background:#f7faff"' : '') + '>' + esc(s.saberes || '') + '</textarea>'
         + (s._auto && s.saberes ? '<div class="muted" style="font-size:.75rem">⚡ Automático desde la programación</div>' : '')
         + '<button class="btn btn-s btn-sm" style="margin-top:4px" data-delprog="' + d + '|' + s.sid + '">📚 Del programa</button></div>'
-        + '<div><label class="f" style="margin-top:0">Actividades</label><textarea class="in qS" rows="3" data-d="' + d + '" data-s="' + s.sid + '" data-k="actividades">' + esc(s.actividades || '') + '</textarea>'
+        + '<div><label class="f" style="margin-top:0">Actividades</label><textarea class="in qS" rows="3" data-d="' + d + '" data-s="' + s.sid + '" data-k="actividades"' + (s._autoAct ? ' data-auto="' + esc(s.actividades) + '" style="background:#f7faff"' : '') + '>' + esc(s.actividades || '') + '</textarea>'
+        + (s._autoAct ? '<div class="muted" style="font-size:.75rem">⚡ Automático: se reparten las actividades del programa</div>' : '')
         + '<button class="btn btn-s btn-sm" style="margin-top:4px" data-actprog="' + d + '|' + s.sid + '">💡 Ideas del programa</button></div>'
         + '<div class="alus"><label class="f" style="margin-top:0">Alumnado</label><div class="row">'
         + (alus.length ? alus.map(al => '<button class="sel-chip' + (s.alumnos && s.alumnos[al.id] ? ' on' : '') + '" data-alq="' + d + '|' + s.sid + '|' + al.id + '">' + esc(al.siglas) + '</button>').join('') : '<span class="muted">Sin alumnado en ' + qCurso + '</span>')
@@ -758,7 +777,7 @@ function nuevaQuincena(curso, fecha) {
     if (D.quincenas[id]) { cerrarModal(); qCurso = curso; qId = id; irA('quincenal'); toast('Esa quincena ya existe', ''); return; }
     const choca = quincenasOrden(curso).find(x => Math.abs((new Date(x.desde) - new Date(desde)) / 864e5) < 14);
     const ant = qs.find(x => x.desde < desde);
-    const nq = { curso, desde, tutor: (D.config.tutores || {})[cursoKey(curso)] || (ant && ant.tutor) || '', profesor: PERFILES[PERFIL].nombre, dias: {} };
+    const nq = { curso, desde, tutor: (D.config.tutores || {})[cursoKey(curso)] || (ant && ant.tutor) || '', profesor: PERFILES[DUENO].nombre, dias: {} };
     if (ant && $('nqCopiar') && $('nqCopiar').checked) {
       Object.entries(ant.dias || {}).forEach(([d, ses]) => {
         nq.dias[d] = {};
@@ -892,10 +911,10 @@ function renderInformes() {
 // ─── Novedades (una sola vez por dispositivo) ──────────────────────
 function novedades() {
   if (window._demo) return;
-  const ID = '2026-11-18-demo', K = 'novedades-refuerzo';
+  const ID = '2026-11-19-borrar-doc2', K = 'novedades-refuerzo';
   try { if (localStorage.getItem(K) === ID) return; } catch (e) { return; }
   setTimeout(() => {
-    abrirModal('<h2>✨ Novedad</h2><p style="line-height:1.55"><b>🧪 Modo demostración:</b> en la pantalla de entrada hay un botón para ver la app con alumnado inventado y una guía que explica cada apartado. Sirve para enseñarla a otros centros: no toca tus datos.</p>'
+    abrirModal('<h2>✨ Novedad</h2><p style="line-height:1.55">🗑️ Ya se puede <b>borrar alumnado</b> desde la papelera de cada tarjeta. Además, el DOC 2 copia del programa de Séneca los apartados que dejes en blanco y la quincena reparte sola las actividades de las sesiones vacías.</p>'
       + '<div class="modal-pie"><button class="btn btn-p" id="novOk">¡Entendido!</button></div>');
     $('novOk').onclick = () => { try { localStorage.setItem(K, ID); } catch (e) { } cerrarModal(); };
   }, 700);
@@ -907,7 +926,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
 // API para documentos.js
 window.App = {
   get D() { return D; }, AREAS, TIPOS, EVAL_ITEMS, NIVELES, OTROS, CURSOS, PERFILES,
-  get PERFIL() { return PERFIL; }, get CURSO_AC() { return CURSO_AC; },
+  get PERFIL() { return PERFIL; }, get DUENO() { return DUENO; }, get CURSO_AC() { return CURSO_AC; },
   alumnosOrden, alumnosDeCurso, cursosConAlumnos, quincenasOrden, sesionesDia, fechaDia, saberesDePrograma, areasDe,
   fechaCorta, fechaLarga, masDias, sinCole, cursoKey, nombreCursoAc, lista, textoSaber, toast, trimestreDe
 };

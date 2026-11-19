@@ -95,7 +95,10 @@
     const a = App.D.alumnos[id];
     const tri = ((a.trimestral || {})['t' + T]) || {};
     return documento(App.areasDe(a).map(k => {
-      const d = tri[k] || {};
+      const d = tri[k] || {}, ot = ((a.programa || {})[k] || {}).otros || {};
+      // Si la maestra no ha escrito nada, se copia lo que trae el programa de Séneca
+      const delProg = (...ks) => ks.flatMap(x => App.lista(ot[x])).join('\n');
+      const val = (v, ...ks) => (String(v || '').trim() ? v : delProg(...ks));
       const fila = (lab, val) => new X.TableRow({ height: { value: 2300, rule: X.HeightRule.ATLEAST }, children: [cab(lab, { w: 2000 }), celda(val, { w: 7700 })] });
       return seccion([
         titulo('PROPUESTA CURRICULAR TRIMESTRAL DE CADA ÁREA OBJETO DE REFUERZO'),
@@ -103,9 +106,9 @@
         p([t('Trimestre: ', { bold: true }), t(T + 'º'), t('    Curso académico: ', { bold: true }), t(App.nombreCursoAc(App.CURSO_AC)), t('    Programa: ', { bold: true }), t(a.tipo || '')], { alignment: X.AlignmentType.CENTER, spacing: { after: 200 } }),
         tabla([
           fila('SABERES BÁSICOS', App.lista(d.saberes).join('\n')),
-          fila('TIPOS DE ACTIVIDADES Y TAREAS', d.actividades),
-          fila('RECURSOS DIDÁCTICOS, AGRUPAMIENTOS, DISTRIBUCIÓN DE ESPACIOS Y TIEMPOS', d.recursos),
-          fila('PROCEDIMIENTOS E INSTRUMENTOS DE EVALUACIÓN', d.evaluacion)
+          fila('TIPOS DE ACTIVIDADES Y TAREAS', val(d.actividades, 'actividades')),
+          fila('RECURSOS DIDÁCTICOS, AGRUPAMIENTOS, DISTRIBUCIÓN DE ESPACIOS Y TIEMPOS', val(d.recursos, 'recursos', 'agrupamientos')),
+          fila('PROCEDIMIENTOS E INSTRUMENTOS DE EVALUACIÓN', val(d.evaluacion, 'instrumentos'))
         ], [2000, 7700])
       ]);
     }));
@@ -188,7 +191,7 @@
         dato('Alumno/a (siglas)', a.siglas), dato('Curso y unidad', a.curso + (a.unidad ? ' · ' + a.unidad : '')), dato('Tutor/a', a.tutor),
         dato('Tipo de programa', (a.tipo || '') + ' · ' + ((App.TIPOS[a.tipo] || {}).txt || '')), dato('Año académico', App.nombreCursoAc(App.CURSO_AC)),
         dato('Información a la familia', a.fechaFamilia ? App.fechaCorta(a.fechaFamilia) : ''), dato('Autorización', a.autorizacion ? 'Firmada' : 'Pendiente'),
-        dato('Profesorado de refuerzo', App.PERFILES[App.PERFIL] ? App.PERFILES[App.PERFIL].nombre : '')
+        dato('Profesorado de refuerzo', App.PERFILES[App.DUENO] ? App.PERFILES[App.DUENO].nombre : '')
       ], [3000, 6700])
     ];
     App.areasDe(a).forEach(k => {

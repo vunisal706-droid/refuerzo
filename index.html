@@ -86,6 +86,9 @@ textarea.in{min-height:70px;resize:vertical;line-height:1.4}
 
 /* Alumnos */
 .al-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.al-borrar{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;font-size:.95rem;cursor:pointer;opacity:.55;transition:opacity .15s,background .15s}
+.al-borrar:hover,.al-borrar:focus-visible{opacity:1;background:#fdecec;outline:none}
+select.pill{cursor:pointer;max-width:170px}
 .al-card{border:1px solid var(--border);border-radius:14px;background:#fff;padding:12px;text-align:left;display:flex;flex-direction:column;gap:6px;transition:transform .1s,box-shadow .1s}
 .al-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
 .al-sig{font-family:'Bricolage Grotesque';font-size:1.45rem;font-weight:800;color:var(--primary-dark)}
@@ -227,6 +230,7 @@ table.ev td.al{background:#fff;text-align:left;font-weight:800;font-family:'Bric
     <h1 id="tituloApp">Gestor de Refuerzo<small>CEIP Capitulaciones · Santa Fe</small></h1>
     <div class="esp"></div>
     <select class="pill" id="selCurso" title="Curso académico"></select>
+    <select class="pill" id="selMaestra" hidden aria-label="Datos de qué maestra"></select>
     <button class="pill" id="perfilPill" title="Cambiar de perfil"></button>
     <div class="status"><div class="dot" id="dot"></div><span id="statusTxt">Conectando…</span></div>
   </div>

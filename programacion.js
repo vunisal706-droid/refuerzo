@@ -332,10 +332,50 @@ function saberesAuto(q, d, s) {
   const varios = porSaber.size > 1;
   return [...porSaber.entries()].map(([t, sig]) => '• ' + t + (varios ? ' (' + sig.join(', ') + ')' : '')).join('\n');
 }
+// Actividades automáticas para las sesiones que la maestra deja en blanco.
+// Salen del programa de Séneca del alumnado y de las sugerencias del área, y se reparten
+// para que todas se usen un número parecido de veces a lo largo de la quincena.
+const ACT_AREA = {
+  LCL: ['Lectura en voz alta de textos cortos.', 'Comprensión lectora con preguntas literales.', 'Dictados cortos.', 'Copia y caligrafía.', 'Escritura de frases y textos cortos.', 'Vocabulario y ortografía con juegos.'],
+  MAT: ['Cálculo mental.', 'Sumas y restas llevando.', 'Problemas de una operación.', 'Series numéricas: anterior y posterior.', 'Numeración y valor posicional con material manipulativo.', 'Juegos de cálculo con regletas.']
+};
+function poolActividades(q, s, ar) {
+  const vistos = new Set(), out = [];
+  const meter = t => { t = String(t || '').trim(); if (t && !vistos.has(norm(t))) { vistos.add(norm(t)); out.push(t); } };
+  // Si el programa mezcla actividades de las dos áreas, cada sesión se queda con las de su área
+  const ajena = { LCL: /c[aá]lculo|sumas?\b|restas?\b|problemas?|numera|n[uú]meros?|regletas?|series? num|multiplic|divisi|geometr|medida/i, MAT: /lectur|leer|dictad|caligraf|escritur|escribir|ortograf|vocabul|comprensi[oó]n lectora|cuentos?/i }[ar];
+  alumnosSesion(q, s).forEach(id => { const a = D.alumnos[id]; if (a && a.areas && a.areas[ar]) lista(((a.programa || {})[ar] || {}).otros ? a.programa[ar].otros.actividades : []).filter(t => !ajena || !ajena.test(t)).forEach(meter); });
+  (ACT_AREA[ar] || []).forEach(meter);
+  return out;
+}
+function planActividades(q) {
+  const plan = {}, usos = new Map(), ultima = {};
+  for (let d = 0; d < 10; d++) {
+    if (sinCole(fechaDia(q, d))) continue;
+    sesionesDia(q, String(d)).forEach(s => {
+      if ((s.actividades || '').trim()) return;
+      const areas = areasSesion(s), cuantas = areas.length > 1 ? 1 : 2, elegidas = [];
+      areas.forEach(ar => {
+        const pool = poolActividades(q, s, ar);
+        for (let n = 0; n < cuantas && pool.length; n++) {
+          const cand = pool.filter(t => !elegidas.includes(t) && (pool.length <= cuantas || !(ultima[ar] || []).includes(t)));
+          const lista2 = cand.length ? cand : pool.filter(t => !elegidas.includes(t));
+          if (!lista2.length) break;
+          const t = lista2.reduce((m, x) => (usos.get(x) || 0) < (usos.get(m) || 0) ? x : m, lista2[0]);
+          usos.set(t, (usos.get(t) || 0) + 1); elegidas.push(t);
+        }
+        ultima[ar] = elegidas.slice();
+      });
+      if (elegidas.length) plan[d + '|' + s.sid] = elegidas.map(t => '• ' + t).join('\n');
+    });
+  }
+  return plan;
+}
 function sesionResuelta(q, d, s) {
   const r = Object.assign({}, s);
   r.alumnos = Object.fromEntries(alumnosSesion(q, s).map(id => [id, true]));
   if (!(s.saberes || '').trim()) { r.saberes = saberesAuto(q, String(d), s); r._auto = true; }
+  if (!(s.actividades || '').trim()) { const t = planActividades(q)[d + '|' + s.sid]; if (t) { r.actividades = t; r._autoAct = true; } }
   return r;
 }
 // Crea una vez las sesiones de los días de refuerzo que estén vacíos
