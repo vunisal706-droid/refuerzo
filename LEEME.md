@@ -20,6 +20,7 @@ igual que con el Gestor PT (correo = usuario IdEA + `@capitulaciones.local`, con
 | María Rodríguez | `mrodrod323@capitulaciones.local` | `mrodrod323` |
 | Miriam | `mromrod681@capitulaciones.local` | `mromrod681` |
 | Cristina | `cmolmar422@capitulaciones.local` | `cmolmar422` |
+| Estela | `egaryeg959@capitulaciones.local` | `egaryeg959` |
 
 
 ## 3 · Añadir las reglas de Refuerzo
@@ -31,14 +32,15 @@ Realtime Database → Reglas. **No borres lo que hay**: añade el bloque `"refue
   "maria":    { ".read": "auth != null && auth.token.email == 'mrodrod323@capitulaciones.local'",    ".write": "auth != null && auth.token.email == 'mrodrod323@capitulaciones.local'" },
   "miriam":   { ".read": "auth != null && (auth.token.email == 'mromrod681@capitulaciones.local' || auth.token.email == 'mrodrod323@capitulaciones.local')", ".write": "auth != null && (auth.token.email == 'mromrod681@capitulaciones.local' || auth.token.email == 'mrodrod323@capitulaciones.local')" },
   "cristina": { ".read": "auth != null && (auth.token.email == 'cmolmar422@capitulaciones.local' || auth.token.email == 'mrodrod323@capitulaciones.local')", ".write": "auth != null && (auth.token.email == 'cmolmar422@capitulaciones.local' || auth.token.email == 'mrodrod323@capitulaciones.local')" },
+  "estela":   { ".read": "auth != null && (auth.token.email == 'egaryeg959@capitulaciones.local' || auth.token.email == 'mrodrod323@capitulaciones.local')", ".write": "auth != null && (auth.token.email == 'egaryeg959@capitulaciones.local' || auth.token.email == 'mrodrod323@capitulaciones.local')" },
   "banco": {
-    ".read":  "auth != null && (auth.token.email == 'mrodrod323@capitulaciones.local' || auth.token.email == 'mromrod681@capitulaciones.local' || auth.token.email == 'cmolmar422@capitulaciones.local')",
-    ".write": "auth != null && (auth.token.email == 'mrodrod323@capitulaciones.local' || auth.token.email == 'mromrod681@capitulaciones.local' || auth.token.email == 'cmolmar422@capitulaciones.local')"
+    ".read":  "auth != null && (auth.token.email == 'mrodrod323@capitulaciones.local' || auth.token.email == 'mromrod681@capitulaciones.local' || auth.token.email == 'cmolmar422@capitulaciones.local' || auth.token.email == 'egaryeg959@capitulaciones.local')",
+    ".write": "auth != null && (auth.token.email == 'mrodrod323@capitulaciones.local' || auth.token.email == 'mromrod681@capitulaciones.local' || auth.token.email == 'cmolmar422@capitulaciones.local' || auth.token.email == 'egaryeg959@capitulaciones.local')"
   }
 }
 ```
 
-Cada maestra solo ve su alumnado, salvo María, que puede abrir los datos de las tres (selector «📂 Datos de…» arriba) para subir los programas de todos los cursos. El **banco** de criterios y saberes es común a las tres.
+Cada maestra solo ve su alumnado, salvo María, que puede abrir los datos de todas (selector «📂 Datos de…» arriba) para subir los programas de todos los cursos. El **banco** de criterios y saberes es común a las tres.
 
 ## Qué guarda la app
 - Alumnado **solo por siglas**. Del programa de Séneca se lee el nombre únicamente para calcular las siglas; no se guarda ni la fecha de nacimiento.

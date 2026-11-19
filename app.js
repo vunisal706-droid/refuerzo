@@ -8,7 +8,8 @@
 const PERFILES = {
   maria:    { nombre: 'María Rodríguez', emoji: '👩‍🏫', idea: 'mrodrod323' },
   miriam:   { nombre: 'Miriam',          emoji: '👩‍🏫', idea: 'mromrod681' },
-  cristina: { nombre: 'Cristina',        emoji: '👩‍🏫', idea: 'cmolmar422' }
+  cristina: { nombre: 'Cristina',        emoji: '👩‍🏫', idea: 'cmolmar422' },
+  estela:   { nombre: 'Estela',          emoji: '👩‍🏫', idea: 'egaryeg959' }
 };
 const DOMINIO = '@capitulaciones.local';
 const CURSOS = ['1º', '2º', '3º', '4º', '5º', '6º'];
